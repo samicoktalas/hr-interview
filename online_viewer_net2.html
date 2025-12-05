@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HR Copilot | Final Report Edition</title>
+    
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-out forwards',
+                        'slide-up': 'slideUp 0.4s ease-out forwards',
+                        'scale-in': 'scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideUp: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        scaleIn: {
+                            '0%': { opacity: '0', transform: 'scale(0.9)' },
+                            '100%': { opacity: '1', transform: 'scale(1)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; }
+        .typing-dot { animation: typing 1.4s infinite ease-in-out both; }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+<div id="root"></div>
+
+<script type="text/babel">
+    const { useState, useEffect, useRef, useMemo } = React;
+
+    // --- SENARYO VERİTABANI ---
+    
+    const INITIAL_INTRO = {
+        text: "Merhabalar, davetiniz için teşekkür ederim. Ben Burak. 6 yıllık Frontend geliştiricisiyim. Son 3 yılımda yoğunlukla React, Next.js ve TypeScript ile büyük ölçekli e-ticaret projelerinde çalıştım.",
+        keywords: ["React", "Next.js", "TypeScript", "6 Yıl"],
+        sentiment: 75
+    };
+
+    const SCENARIO_STAGES = [
+        {
+            id: 1,
+            stageName: "Mimari & State Yönetimi",
+            description: "Proje yapısı ve veri akışı tercihleri.",
+            options: [
+                {
+                    type: 'Folder Structure',
+                    question: "Projelerinde 'Feature-based' klasör yapısını mı yoksa 'Layer-based' yapıyı mı tercih ediyorsun?",
+                    reason: "Proje ölçeğine göre tercihini anlamak.",
+                    answer: "Küçük projelerde Layer-based yeterli oluyor. Ancak çalıştığım son büyük projede kesinlikle 'Feature-based' yapıyı kullandık. Her modülün kendi içinde bağımsız olması ölçeklenebilirlik için çok kritik.",
+                    keywords: ["Feature-based", "Scalability", "Modularity"],
+                    sentiment: 85
+                },
+                {
+                    type: 'State Management',
+                    question: "Global State yönetimi için Redux Toolkit mi, Context API mi yoksa Zustand mı tercih edersin?",
+                    reason: "Modern araçlara hakimiyetini ölçmek.",
+                    answer: "Eskiden Redux Thunk ile çok boğuştuk ama Redux Toolkit işleri kolaylaştırdı. Yine de son dönemde 'Zustand' favorim; çünkü çok daha hafif. Context API'yi ise sadece tema gibi nadir değişen veriler için kullanıyorum.",
+                    keywords: ["Zustand", "Redux Toolkit", "Boilerplate"],
+                    sentiment: 90
+                },
+                {
+                    type: 'Micro-Frontend',
+                    question: "Hiç Micro-Frontend mimarisiyle çalışma şansın oldu mu? Deneyimin varsa bahseder misin?",
+                    reason: "İleri seviye mimari bilgisini sorgulamak.",
+                    answer: "Evet, bir önceki bankacılık projemizde Module Federation kullanarak panelleri ayırdık. Bağımsız deploy çıkabilmek harika olsa da, stil izolasyonunu sağlamak ciddi bir efor gerektirmişti.",
+                    keywords: ["Micro-Frontend", "Module Federation"],
+                    sentiment: 80
+                }
+            ]
+        },
+        {
+            id: 2,
+            stageName: "React Hooks & Performans",
+            description: "Render optimizasyonu ve hook mantığı.",
+            options: [
+                {
+                    type: 'Optimization',
+                    question: "React uygulamasında gereksiz render'ları önlemek için useMemo ve useCallback'i nasıl konumlandırırsın?",
+                    reason: "Performans optimizasyonu bilgisi.",
+                    answer: "Bu hook'ları varsayılan olarak her yere eklemek hata olur. Öncelikle React Profiler ile darboğazı tespit ederim. Genellikle referans eşitliği (Referential Equality) gereken child component'lere prop geçerken kullanırım.",
+                    keywords: ["Profiler", "Referential Equality"],
+                    sentiment: 92
+                },
+                {
+                    type: 'Custom Hooks',
+                    question: "Custom Hook yazma alışkanlığın var mı? Bir örnek verebilir misin?",
+                    reason: "Kod tekrarını önleme yeteneği.",
+                    answer: "Kesinlikle. Logic'i UI'dan ayırmak prensibimdir. Örneğin, API çağrıları için 'useFetch' veya form yönetimi için 'useForm' gibi hookları mutlaka yazar ve projede ortaklaştırırım.",
+                    keywords: ["Logic Separation", "useFetch", "Reusability"],
+                    sentiment: 88
+                },
+                {
+                    type: 'React 18',
+                    question: "React 18 ile gelen 'Automatic Batching' hakkında ne düşünüyorsun?",
+                    reason: "Güncel versiyon takibi.",
+                    answer: "Automatic Batching performans için harika bir özellik, state güncellemelerini gruplaması render sayısını düşürdü. Promise içindeki güncellemeler artık tek render tetikliyor.",
+                    keywords: ["Automatic Batching", "React 18"],
+                    sentiment: 85
+                }
+            ]
+        },
+        {
+            id: 3,
+            stageName: "Next.js & Rendering",
+            description: "SSR, CSR ve Next.js özellikleri.",
+            options: [
+                {
+                    type: 'SSR vs CSR',
+                    question: "Next.js'te Server Component (RSC) ve Client Component ayrımını neye göre yapıyorsun?",
+                    reason: "Modern Next.js (App Router) bilgisi.",
+                    answer: "Varsayılan olarak her şeyi Server Component yapmaya çalışırım (SEO ve Bundle Size için). Sadece `useState`, `useEffect` veya `onClick` gibi interaktiviteye ihtiyaç duyduğum yapraklarda 'use client' kullanırım.",
+                    keywords: ["App Router", "SEO", "Bundle Size"],
+                    sentiment: 95
+                },
+                {
+                    type: 'Data Fetching',
+                    question: "Veri çekme işlemlerinde Static Generation (SSG) mi tercih edersin?",
+                    reason: "Veri stratejisi ve performans.",
+                    answer: "Eğer veriler kullanıcıya özel değilse (örn: Blog) kesinlikle SSG + ISR tercih ederim. Ancak Dashboard gibi kişisel sayfalarda SSR veya Client-side fetching kullanırım.",
+                    keywords: ["ISR", "SSG", "Dynamic Data"],
+                    sentiment: 90
+                },
+                {
+                    type: 'Middleware',
+                    question: "Next.js Middleware özelliğini hiç kullandın mı?",
+                    reason: "Backend-for-frontend bilgisi.",
+                    answer: "Evet, özellikle Authentication ve Authorization kontrollerini sayfa render edilmeden önce yapmak için middleware çok kullanışlı. Ayrıca A/B testi yönlendirmeleri için de kullandım.",
+                    keywords: ["Middleware", "Auth", "A/B Testing"],
+                    sentiment: 88
+                }
+            ]
+        },
+        {
+            id: 4,
+            stageName: "Test & Güvenlik",
+            description: "Kalite standartları ve güvenli kod.",
+            options: [
+                {
+                    type: 'Unit Testing',
+                    question: "Frontend tarafında test yazıyor musun? Hangi araçları kullanıyorsun?",
+                    reason: "Kod kalitesi ve test disiplini.",
+                    answer: "İş mantığı içeren fonksiyonlar için Jest, komponentler için React Testing Library kullanıyorum. Kritik akışların testinin olması gerektiğine inanırım.",
+                    keywords: ["Jest", "RTL", "Critical Path"],
+                    sentiment: 85
+                },
+                {
+                    type: 'XSS Protection',
+                    question: "React uygulamalarında XSS açıklarına karşı nelere dikkat ediyorsun?",
+                    reason: "Güvenlik farkındalığı.",
+                    answer: "React zaten otomatik escaping yapıyor ama `dangerouslySetInnerHTML` kullanmaktan kaçınırım. Kullanmak zorundaysam mutlaka `dompurify` gibi kütüphanelerle veriyi temizlerim.",
+                    keywords: ["XSS", "Sanitization", "DOMPurify"],
+                    sentiment: 92
+                }
+            ]
+        },
+        {
+            id: 5,
+            stageName: "Soft Skills & Kapanış",
+            description: "Kültürel uyum ve beklentiler.",
+            options: [
+                {
+                    type: 'Conflict',
+                    question: "Tasarımcıdan gelen bir UI'ın teknik olarak çok maliyetli olacağını fark edersen ne yaparsın?",
+                    reason: "İletişim ve problem çözme.",
+                    answer: "Direkt 'hayır' demek yerine, neden performans sorunu yaratacağını teknik verilerle açıklarım ve daha performanslı alternatif bir çözüm öneririm.",
+                    keywords: ["Negotiation", "Alternative Solution"],
+                    sentiment: 92
+                },
+                {
+                    type: 'Expectations',
+                    question: "Bizimle çalışmaya başlarsan ilk 1 ayda hedefin ne olur?",
+                    reason: "Adaptasyon ve hedef odaklılık.",
+                    answer: "İlk 2 hafta proje mimarisini ve domain bilgisini özümsemeye odaklanırım. Ay sonunda ise backlog'daki orta ölçekli bir taskı tek başıma tamamlamış olmayı hedeflerim.",
+                    keywords: ["Onboarding", "Value Creation"],
+                    sentiment: 95
+                },
+                {
+                    type: 'Salary',
+                    question: "Maaş beklentin ve yan haklar konusunda düşüncelerin neler?",
+                    reason: "Maddi uyumluluk.",
+                    answer: "Yıllık brüt X bandında bir beklentim var. Ancak şirketin sunduğu eğitim bütçesi ve uzaktan çalışma esnekliği benim için önemli.",
+                    keywords: ["Salary", "Remote Work"],
+                    sentiment: 80
+                }
+            ]
+        }
+    ];
+
+    // --- BİLEŞENLER ---
+
+    const ChatBubble = ({ msg }) => {
+        const isHR = msg.role === 'HR';
+        const isSystem = msg.role === 'System';
+
+        if (isSystem) {
+            return (
+                <div className="flex w-full justify-center my-6 animate-fade-in">
+                    <div className="bg-slate-800/60 border border-slate-700/50 text-slate-400 text-[11px] font-mono py-1 px-3 rounded-full flex items-center gap-2">
+                        <i className="fa-solid fa-server text-emerald-500/80"></i>
+                        {msg.text}
+                    </div>
+                </div>
+            );
+        }
+
+        return (
+            <div className={`flex w-full mb-4 animate-slide-up ${isHR ? 'justify-end' : 'justify-start'}`}>
+                <div className={`flex flex-col max-w-[85%] ${isHR ? 'items-end' : 'items-start'}`}>
+                    <div className="flex items-center gap-2 mb-1 px-1">
+                        <span className={`text-[10px] font-bold uppercase tracking-wider ${isHR ? 'text-emerald-400' : 'text-blue-400'}`}>
+                            {isHR ? 'SİZ (İK UZMANI)' : 'ADAY (BURAK)'}
+                        </span>
+                    </div>
+                    <div className={`p-4 rounded-2xl shadow-lg text-sm leading-relaxed ${
+                        isHR 
+                        ? 'bg-gradient-to-br from-emerald-600 to-emerald-700 text-white rounded-tr-sm' 
+                        : 'bg-slate-700/90 border border-slate-600 text-slate-100 rounded-tl-sm'
+                    }`}>
+                        {msg.text}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    const TypingIndicator = () => (
+        <div className="flex w-full mb-4 justify-start animate-fade-in">
+            <div className="bg-slate-700/50 p-4 rounded-2xl rounded-tl-sm flex gap-1 items-center h-12 w-20">
+                <div className="w-2 h-2 bg-slate-400 rounded-full typing-dot"></div>
+                <div className="w-2 h-2 bg-slate-400 rounded-full typing-dot"></div>
+                <div className="w-2 h-2 bg-slate-400 rounded-full typing-dot"></div>
+            </div>
+        </div>
+    );
+
+    const OptionCard = ({ option, onSelect, isUsed }) => (
+        <button 
+            onClick={() => !isUsed && onSelect(option)}
+            disabled={isUsed}
+            className={`group w-full text-left p-4 rounded-xl transition-all duration-200 mb-3 relative overflow-hidden border ${
+                isUsed 
+                ? 'bg-slate-800/30 border-slate-800 opacity-50 cursor-not-allowed grayscale' 
+                : 'bg-slate-800 hover:bg-slate-700 border-slate-600 hover:border-emerald-500/50'
+            }`}
+        >
+            <div className="flex items-start justify-between mb-1">
+                <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded transition-colors ${
+                    isUsed ? 'bg-slate-800 text-slate-500' : 'bg-slate-900 text-slate-400 group-hover:text-emerald-400'
+                }`}>
+                    {option.type}
+                </span>
+                {isUsed && <i className="fa-solid fa-check text-emerald-500"></i>}
+                {!isUsed && <i className="fa-solid fa-chevron-right text-slate-500 group-hover:translate-x-1 transition-transform"></i>}
+            </div>
+            <p className={`text-sm font-medium mb-2 ${isUsed ? 'text-slate-500 line-through' : 'text-slate-200 group-hover:text-white'}`}>
+                {option.question}
+            </p>
+            {!isUsed && (
+                <div className="text-[10px] text-slate-500 italic border-t border-slate-700/50 pt-2 flex items-center gap-1">
+                    <i className="fa-solid fa-wand-magic-sparkles text-indigo-400"></i>
+                    Analiz Hedefi: {option.reason}
+                </div>
+            )}
+        </button>
+    );
+
+    // --- RAPOR KARTI COMPONENTI ---
+    const ReportCard = ({ sentimentHistory, keywords }) => {
+        // Ortalama puan hesapla
+        const averageScore = useMemo(() => {
+            if (sentimentHistory.length === 0) return 0;
+            const sum = sentimentHistory.reduce((a, b) => a + b, 0);
+            return Math.round(sum / sentimentHistory.length);
+        }, [sentimentHistory]);
+
+        let status = { text: 'Yetersiz', color: 'text-red-400', bg: 'bg-red-500/10' };
+        if (averageScore >= 85) status = { text: 'Güçlü Aday', color: 'text-emerald-400', bg: 'bg-emerald-500/10' };
+        else if (averageScore >= 65) status = { text: 'Değerlendirilebilir', color: 'text-yellow-400', bg: 'bg-yellow-500/10' };
+
+        return (
+            <div className="flex-1 flex flex-col p-6 animate-scale-in h-full overflow-y-auto">
+                <div className="text-center mb-6">
+                    <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3 border-4 border-slate-700 relative">
+                        <span className={`text-2xl font-bold ${status.color}`}>{averageScore}</span>
+                        <div className="absolute inset-0 rounded-full border-4 border-emerald-500 opacity-20 animate-pulse"></div>
+                    </div>
+                    <h2 className="text-xl font-bold text-white mb-1">Mülakat Raporu</h2>
+                    <span className={`text-xs px-3 py-1 rounded-full font-bold uppercase ${status.bg} ${status.color}`}>
+                        {status.text}
+                    </span>
+                </div>
+
+                <div className="bg-slate-800/50 rounded-xl p-4 mb-4 border border-white/5">
+                    <h3 className="text-xs font-bold text-slate-400 uppercase mb-3 flex items-center gap-2">
+                        <i className="fa-solid fa-chart-pie"></i> Performans Özeti
+                    </h3>
+                    <div className="space-y-3">
+                        <div>
+                            <div className="flex justify-between text-xs mb-1 text-slate-300">
+                                <span>Teknik Derinlik</span>
+                                <span>{averageScore > 80 ? 'Yüksek' : 'Orta'}</span>
+                            </div>
+                            <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                                <div className="h-full bg-indigo-500" style={{width: `${averageScore}%`}}></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div className="flex justify-between text-xs mb-1 text-slate-300">
+                                <span>İletişim & Soft Skills</span>
+                                <span>{averageScore > 70 ? 'İyi' : 'Geliştirilmeli'}</span>
+                            </div>
+                            <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                                <div className="h-full bg-cyan-500" style={{width: `${Math.min(100, averageScore + 5)}%`}}></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex-1 bg-slate-800/50 rounded-xl p-4 border border-white/5 overflow-hidden flex flex-col">
+                    <h3 className="text-xs font-bold text-slate-400 uppercase mb-3 flex items-center gap-2">
+                        <i className="fa-solid fa-tags"></i> Tespit Edilen Yetenekler
+                    </h3>
+                    <div className="flex flex-wrap gap-2 content-start overflow-y-auto custom-scroll">
+                        {keywords.length > 0 ? keywords.map((kw, i) => (
+                            <span key={i} className="px-2 py-1 bg-slate-700 rounded text-[10px] text-slate-200 border border-slate-600">
+                                {kw}
+                            </span>
+                        )) : (
+                            <span className="text-xs text-slate-500 italic">Veri yok.</span>
+                        )}
+                    </div>
+                </div>
+
+                <button 
+                    onClick={() => window.location.reload()} 
+                    className="w-full mt-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
+                >
+                    <i className="fa-solid fa-rotate-right"></i> Yeni Mülakat Başlat
+                </button>
+            </div>
+        );
+    };
+
+    // --- ANA UYGULAMA ---
+    const App = () => {
+        const [messages, setMessages] = useState([]);
+        const [stageIndex, setStageIndex] = useState(0);
+        const [usedQuestionIds, setUsedQuestionIds] = useState([]);
+        const [isStarted, setIsStarted] = useState(false);
+        const [isFinished, setIsFinished] = useState(false);
+        const [isTyping, setIsTyping] = useState(false);
+        
+        // RAPORLAMA İÇİN YENİ STATE'LER
+        const [keywords, setKeywords] = useState([]);
+        const [sentiment, setSentiment] = useState(50);
+        const [sentimentHistory, setSentimentHistory] = useState([]); // Ortalama için
+
+        const scrollRef = useRef(null);
+
+        useEffect(() => {
+            scrollRef.current?.scrollIntoView({ behavior: "smooth" });
+        }, [messages, isTyping]);
+
+        const startInterview = () => {
+            setIsStarted(true);
+            setIsTyping(true);
+            setTimeout(() => {
+                setMessages([{ role: 'Candidate', text: INITIAL_INTRO.text }]);
+                setKeywords(INITIAL_INTRO.keywords);
+                setSentiment(INITIAL_INTRO.sentiment);
+                setSentimentHistory([INITIAL_INTRO.sentiment]); // İlk sentimenti kaydet
+                setIsTyping(false);
+            }, 1500);
+        };
+
+        const handleOptionSelect = (option, optionIdx) => {
+            setMessages(prev => [...prev, { role: 'HR', text: option.question }]);
+            setIsTyping(true);
+            
+            const uniqueId = `${stageIndex}-${optionIdx}`;
+            setUsedQuestionIds(prev => [...prev, uniqueId]);
+
+            setTimeout(() => {
+                setMessages(prev => [...prev, { role: 'Candidate', text: option.answer }]);
+                
+                if(option.keywords) {
+                    setKeywords(prev => [...new Set([...prev, ...option.keywords])]);
+                }
+                setSentiment(option.sentiment);
+                setSentimentHistory(prev => [...prev, option.sentiment]); // Tarihçeye ekle
+                
+                setIsTyping(false);
+            }, 2500);
+        };
+
+        const handleNextStage = () => {
+            if (stageIndex < SCENARIO_STAGES.length - 1) {
+                setStageIndex(prev => prev + 1);
+            }
+        };
+
+        const handlePrevStage = () => {
+            if (stageIndex > 0) {
+                setStageIndex(prev => prev - 1);
+            }
+        };
+
+        const handleFinishInterview = () => {
+            setMessages(prev => [...prev, { role: 'HR', text: "Burak Bey, zamanınız ve samimi cevaplarınız için teşekkürler. Süreci burada sonlandırıyoruz, ekibimiz size dönüş yapacak." }]);
+            setIsFinished(true);
+            setTimeout(() => {
+                setMessages(prev => [...prev, { role: 'System', text: "Mülakat kaydı başarıyla oluşturuldu ve rapor hazırlandı." }]);
+            }, 1000);
+        };
+
+        const currentStage = SCENARIO_STAGES[stageIndex];
+        const currentOptions = currentStage?.options || [];
+        const isLastStage = stageIndex === SCENARIO_STAGES.length - 1;
+        const isFirstStage = stageIndex === 0;
+
+        return (
+            <div className="h-screen w-full flex flex-col bg-[#0f172a] font-sans overflow-hidden">
+                
+                {/* Header */}
+                <header className="h-16 border-b border-white/5 bg-[#0f172a]/90 backdrop-blur flex items-center justify-between px-6 z-20 shrink-0">
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-lg flex items-center justify-center text-white shadow-lg shadow-indigo-900/40">
+                            <i className="fa-solid fa-robot"></i>
+                        </div>
+                        <div>
+                            <h1 className="text-white font-semibold text-sm tracking-wide">HR Interview Copilot</h1>
+                            <div className="text-[10px] text-slate-400">Pro Edition v5.0</div>
+                        </div>
+                    </div>
+                    
+                    <div className="flex gap-3">
+                        {!isStarted && !isFinished && (
+                            <button onClick={startInterview} className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2">
+                                <i className="fa-solid fa-play"></i> Simülasyonu Başlat
+                            </button>
+                        )}
+                        
+                        {isStarted && !isFinished && (
+                            <button onClick={handleFinishInterview} className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2">
+                                <i className="fa-solid fa-power-off"></i> Görüşmeyi Bitir
+                            </button>
+                        )}
+                    </div>
+                </header>
+
+                <div className="flex-1 flex overflow-hidden">
+                    
+                    {/* LEFT: CHAT STREAM */}
+                    <div className="flex-1 flex flex-col min-w-0 bg-slate-900/50 relative">
+                        <div className="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth">
+                            {!isStarted && (
+                                <div className="h-full flex flex-col items-center justify-center text-slate-600 opacity-60">
+                                    <i className="fa-solid fa-user-astronaut text-5xl mb-4"></i>
+                                    <p className="font-medium">Senior React Developer Mülakatı</p>
+                                    <p className="text-xs mt-1 text-slate-500">Hazır olduğunuzda başlatın.</p>
+                                </div>
+                            )}
+                            
+                            {messages.map((m, i) => <ChatBubble key={i} msg={m} />)}
+                            
+                            {isTyping && <TypingIndicator />}
+                            <div ref={scrollRef} />
+                        </div>
+                    </div>
+
+                    {/* RIGHT: CONTROL PANEL */}
+                    <div className="w-[440px] bg-[#1e293b] border-l border-white/5 flex flex-col shrink-0 shadow-2xl z-10">
+                        
+                        {/* HEADER: Always Visible unless finished */}
+                        {!isFinished && (
+                            <div className="h-32 border-b border-white/5 p-5 grid grid-cols-2 gap-4">
+                                <div className="bg-slate-800/50 rounded-lg p-3 border border-white/5">
+                                    <div className="text-[10px] text-slate-400 uppercase font-bold mb-1">Anlık Skor</div>
+                                    <div className="flex items-center gap-2">
+                                        <span className={`text-2xl font-bold ${sentiment > 70 ? 'text-emerald-400' : 'text-yellow-400'}`}>{sentiment}%</span>
+                                        <div className="flex-1 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                                            <div className="h-full bg-emerald-500 transition-all duration-1000" style={{width: `${sentiment}%`}}></div>
+                                        </div>
+                                    </div>
+                                    <div className="text-[10px] text-slate-500 mt-1">Teknik & Sosyal Güven</div>
+                                </div>
+                                <div className="bg-slate-800/50 rounded-lg p-3 border border-white/5 overflow-hidden relative">
+                                    <div className="text-[10px] text-slate-400 uppercase font-bold mb-1">Anlık Etiketler</div>
+                                    <div className="flex flex-wrap gap-1 content-start h-12 overflow-y-auto custom-scroll">
+                                        {keywords.slice(-5).map((k, i) => (
+                                            <span key={i} className="text-[9px] bg-slate-700 px-1.5 py-0.5 rounded text-cyan-300 border border-slate-600">{k}</span>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* CONTENT AREA: Questions OR Report */}
+                        <div className="flex-1 bg-gradient-to-b from-[#1e293b] to-[#0f172a] relative overflow-hidden">
+                            
+                            {isFinished ? (
+                                <ReportCard sentimentHistory={sentimentHistory} keywords={keywords} />
+                            ) : isStarted && !isTyping ? (
+                                <div className="flex-1 flex flex-col animate-fade-in h-full p-6">
+                                    
+                                    {/* Stage Info */}
+                                    {currentStage ? (
+                                        <>
+                                            <div className="flex items-center justify-between mb-2">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                                                    <h3 className="text-sm font-bold text-white">{currentStage.stageName}</h3>
+                                                </div>
+                                                <span className="text-[10px] text-slate-400">{stageIndex + 1}/{SCENARIO_STAGES.length}</span>
+                                            </div>
+                                            <p className="text-xs text-slate-500 mb-4">{currentStage.description}</p>
+                                            
+                                            {/* Questions List */}
+                                            <div className="flex-1 overflow-y-auto pr-2 mb-4">
+                                                {currentOptions.map((opt, idx) => {
+                                                    const uniqueId = `${stageIndex}-${idx}`;
+                                                    const isUsed = usedQuestionIds.includes(uniqueId);
+                                                    return (
+                                                        <OptionCard 
+                                                            key={idx} 
+                                                            option={opt} 
+                                                            onSelect={(o) => handleOptionSelect(o, idx)}
+                                                            isUsed={isUsed}
+                                                        />
+                                                    );
+                                                })}
+                                            </div>
+
+                                            {/* Navigation Controls */}
+                                            <div className="mt-auto grid grid-cols-2 gap-3 pt-4 border-t border-white/5">
+                                                <button 
+                                                    onClick={handlePrevStage}
+                                                    disabled={isFirstStage}
+                                                    className={`py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
+                                                        isFirstStage 
+                                                        ? 'bg-slate-800 text-slate-600 cursor-not-allowed' 
+                                                        : 'bg-slate-700 hover:bg-slate-600 text-white'
+                                                    }`}
+                                                >
+                                                    <i className="fa-solid fa-arrow-left"></i> Önceki
+                                                </button>
+                                                
+                                                <button 
+                                                    onClick={handleNextStage}
+                                                    disabled={isLastStage}
+                                                    className={`py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
+                                                        isLastStage 
+                                                        ? 'bg-slate-800 text-slate-600 cursor-not-allowed' 
+                                                        : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-900/20'
+                                                    }`}
+                                                >
+                                                    Sonraki <i className="fa-solid fa-arrow-right"></i>
+                                                </button>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="flex-1 flex flex-col items-center justify-center text-center">
+                                            <p className="text-slate-400">Senaryo Sonu</p>
+                                        </div>
+                                    )}
+
+                                </div>
+                            ) : (
+                                <div className="flex-1 flex flex-col items-center justify-center text-slate-600 text-center px-6">
+                                    {isTyping ? (
+                                        <>
+                                            <i className="fa-solid fa-comment-dots text-3xl mb-4 animate-bounce text-indigo-500"></i>
+                                            <p className="text-sm">Aday yanıtlıyor...</p>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <i className="fa-solid fa-terminal text-4xl mb-4 opacity-50"></i>
+                                            <p className="text-sm">Simülasyon bekleniyor...</p>
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+
+</script>
+</body>
+</html>
